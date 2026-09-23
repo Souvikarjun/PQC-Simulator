@@ -1,0 +1,19 @@
+experiment:
+  name: authentication-attacks
+network:
+  vehicles: 20
+  duration: 10
+  message_rate: 10
+  communication_range: 300
+  packet_loss: 0.02
+  latency_ms: 2
+  bandwidth_mbps: 6
+  mobility_mps: 5
+cryptography:
+  algorithm: ML-DSA-65
+simulation:
+  seed: 2026
+  repetitions: 1
+attack:
+  replay: true
+  tamper: true

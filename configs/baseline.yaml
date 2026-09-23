@@ -1,0 +1,19 @@
+experiment:
+  name: baseline-10hz
+network:
+  vehicles: 20
+  duration: 10
+  message_rate: 10
+  communication_range: 250
+  packet_loss: 0.02
+  latency_ms: 2
+  bandwidth_mbps: 6
+  mobility_mps: 0
+cryptography:
+  algorithm: ML-DSA-44
+simulation:
+  seed: 42
+  repetitions: 1
+attack:
+  replay: false
+  tamper: false
