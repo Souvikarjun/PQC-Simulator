@@ -20,6 +20,13 @@ const Profile& profileFor(const std::string& name) {
         {"SLH-DSA-SHA2-128s", {32, 64, 7856}, {35.0, 1850.0, 410.0}},
         {"Ed25519", {32, 64, 64}, {8.0, 32.0, 48.0}},
         {"ECDSA-P256", {65, 32, 72}, {40.0, 75.0, 110.0}},
+        {"SHA-DSA", {32, 64, 64}, {10.0, 40.0, 58.0}},
+        {"FALCON-512", {897, 1281, 666}, {14.0, 82.0, 96.0}},
+        {"FALCON-1024", {1793, 2305, 1280}, {20.0, 120.0, 145.0}},
+        {"ML-KEM", {800, 1632, 768}, {10.0, 50.0, 70.0}},
+        {"ML-KEM-512", {800, 1632, 768}, {10.0, 50.0, 70.0}},
+        {"ML-KEM-768", {1184, 2400, 1088}, {14.0, 68.0, 90.0}},
+        {"ML-KEM-1024", {1568, 3168, 1568}, {18.0, 86.0, 115.0}},
     };
     for (const auto& profile : profiles) {
         if (profile.name == name) return profile;
@@ -79,7 +86,9 @@ std::unique_ptr<SignatureScheme> createSignatureScheme(const std::string& name) 
 }
 
 std::vector<std::string> supportedSignatureSchemes() {
-    return {"ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "SLH-DSA-SHA2-128s", "Ed25519", "ECDSA-P256"};
+    return {"ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "SLH-DSA-SHA2-128s",
+            "Ed25519", "ECDSA-P256", "SHA-DSA", "FALCON-512", "FALCON-1024",
+            "ML-KEM", "ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"};
 }
 
 }  // namespace v2x::crypto

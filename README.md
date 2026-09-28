@@ -8,7 +8,7 @@ A modular C++ simulator for studying post-quantum authentication overhead in V2V
 - Deterministic experiment seeds and simple YAML-style configuration files.
 - Vehicle mobility, communication range, probabilistic loss, latency, and bandwidth metadata.
 - CAM message serialization and signature verification workflow.
-- Modeled profiles for ML-DSA-44, ML-DSA-65, ML-DSA-87, SLH-DSA-SHA2-128s, Ed25519, and ECDSA-P256.
+- Modeled profiles for ML-DSA-44, ML-DSA-65, ML-DSA-87, SLH-DSA-SHA2-128s, Ed25519, ECDSA-P256, SHA-DSA, FALCON-512, FALCON-1024, and ML-KEM family variants.
 - Replay and tampering attack hooks.
 - CSV and JSON result output.
 - Result records include execution type, timeframe, vehicle count, execution/key-generation/encryption/decryption/signing timings, modeled memory usage, forgeability, and network counters.
@@ -43,7 +43,17 @@ The current machine's legacy GNU compiler only supports older language modes; it
 Command-line configuration:
 
 ```powershell
-.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm ML-DSA-44 --seed 42 --csv results.csv --json results.json
+# ML-DSA example
+.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm ML-DSA-44 --seed 42 --csv results_ml_dsa.csv --json results_ml_dsa.json
+
+# SHA-DSA example
+.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm SHA-DSA --seed 42 --csv results_sha_dsa.csv --json results_sha_dsa.json
+
+# FALCON example
+.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm FALCON-512 --seed 42 --csv results_falcon.csv --json results_falcon.json
+
+# ML-KEM example
+.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm ML-KEM-512 --seed 42 --csv results_ml_kem.csv --json results_ml_kem.json
 ```
 
 Configuration file:

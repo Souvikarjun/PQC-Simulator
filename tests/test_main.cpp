@@ -7,6 +7,15 @@
 #include <iostream>
 
 int main() {
+    for (const auto& name : {"SHA-DSA", "FALCON-512", "ML-KEM-512"}) {
+        auto scheme = v2x::crypto::createSignatureScheme(name);
+        const auto keys = scheme->generateKeyPair(42);
+        const std::string message = "signed BSM";
+        const auto signature = scheme->sign(message, keys);
+        assert(scheme->verify(message, signature, keys.publicKey));
+        assert(!scheme->verify("tampered BSM", signature, keys.publicKey));
+    }
+
     auto scheme = v2x::crypto::createSignatureScheme("ML-DSA-44");
     const auto keys = scheme->generateKeyPair(42);
     const std::string message = "signed BSM";
