@@ -20,7 +20,7 @@ struct Configuration {
     std::uint32_t seed{42};
     int repetitions{1};
     std::string algorithm{"ML-DSA-44"};
-    CryptoMode mode{CryptoMode::ModeledPqc};
+    CryptoMode mode{CryptoMode::LiboqsPqc};
     std::string csvPath;
     std::string jsonPath;
     bool replayAttack{false};

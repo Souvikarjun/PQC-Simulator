@@ -26,11 +26,11 @@ struct Velocity {
 
 enum class MessageType { Cam, Denm, Generic };
 
-enum class CryptoMode { ModeledPqc, ClassicalBaseline, Hybrid };
+enum class CryptoMode { LiboqsPqc, ClassicalBaseline, Hybrid };
 
 inline std::string toString(CryptoMode mode) {
     switch (mode) {
-    case CryptoMode::ModeledPqc: return "modeled_pqc";
+    case CryptoMode::LiboqsPqc: return "liboqs_pqc";
     case CryptoMode::ClassicalBaseline: return "classical_baseline";
     case CryptoMode::Hybrid: return "hybrid";
     }

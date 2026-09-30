@@ -102,8 +102,8 @@ void printSummary(const simulation::RunResult& result) {
               << "Execution type:           " << v2x::toString(c.mode) << "\n"
               << "Execution time:           " << m.executionTimeUs / 1000.0 << " ms\n"
               << "Key generation time:      " << m.keyGenerationUs / 1000.0 << " ms\n"
-              << "Modeled signing time:     " << m.signingUs / 1000.0 << " ms\n"
-              << "Modeled verification:     " << m.verificationUs / 1000.0 << " ms\n";
+              << "Signing time:             " << m.signingUs / 1000.0 << " ms\n"
+              << "Verification time:         " << m.verificationUs / 1000.0 << " ms\n";
     if (!m.authenticationLatencyUs.empty()) {
         const auto stats = metrics::summarize(m.authenticationLatencyUs);
         std::cout << "Authentication latency:   " << stats.mean << " us mean, "

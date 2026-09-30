@@ -5,8 +5,21 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(FetchContent)
+set(OQS_BUILD_ONLY_LIB ON CACHE BOOL "" FORCE)
+set(OQS_MINIMAL_BUILD "SIG_ml_dsa_44;SIG_ml_dsa_65;SIG_ml_dsa_87;SIG_falcon_512;SIG_falcon_1024;SIG_sphincs_sha2_128s_simple;KEM_ml_kem_512;KEM_ml_kem_768;KEM_ml_kem_1024" CACHE STRING "" FORCE)
+set(OQS_USE_OPENSSL OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    liboqs
+    GIT_REPOSITORY https://github.com/open-quantum-safe/liboqs.git
+    GIT_TAG 0.12.0
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(liboqs)
+
 add_library(v2x_core
     src/crypto/signature_scheme.cpp
+    src/crypto/kem_scheme.cpp
     src/metrics/metrics.cpp
     src/network/message.cpp
     src/network/vehicle.cpp
@@ -14,7 +27,8 @@ add_library(v2x_core
     src/simulation/configuration.cpp
     src/simulation/simulator.cpp
 )
-target_include_directories(v2x_core PUBLIC include)
+target_include_directories(v2x_core PUBLIC include PRIVATE "${liboqs_BINARY_DIR}/include")
+target_link_libraries(v2x_core PUBLIC oqs)
 
 add_executable(pqc_v2x_simulator src/main.cpp)
 target_link_libraries(pqc_v2x_simulator PRIVATE v2x_core)

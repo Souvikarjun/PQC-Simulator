@@ -8,15 +8,15 @@ A modular C++ simulator for studying post-quantum authentication overhead in V2V
 - Deterministic experiment seeds and simple YAML-style configuration files.
 - Vehicle mobility, communication range, probabilistic loss, latency, and bandwidth metadata.
 - CAM message serialization and signature verification workflow.
-- Modeled profiles for ML-DSA-44, ML-DSA-65, ML-DSA-87, SLH-DSA-SHA2-128s, Ed25519, ECDSA-P256, SHA-DSA, FALCON-512, FALCON-1024, and ML-KEM family variants.
+- Real liboqs-backed signature operations for enabled ML-DSA and Falcon variants, plus the SPHINCS+ SHA2 128s profile.
+- Real liboqs-backed ML-KEM-512/768/1024 key generation, encapsulation, and decapsulation through the KEM interface.
 - Replay and tampering attack hooks.
 - CSV and JSON result output.
-- Result records include execution type, timeframe, vehicle count, execution/key-generation/encryption/decryption/signing timings, modeled memory usage, forgeability, and network counters.
+- Result records include execution type, timeframe, vehicle count, execution/key-generation/signing/verification timings, estimated key/signature memory usage, and network counters.
 - Mean, median, standard deviation, and 95% confidence interval utilities.
-- KEM interface reserved for ML-KEM/X25519/liboqs implementations.
 - CTest smoke tests and a Python CSV analysis helper.
 
-The modeled signature provider is intentionally a deterministic test double. It is useful for network experiments but is not cryptographically secure. The next cryptographic integration should implement the same `SignatureScheme` interface with liboqs and record measured operation timings.
+liboqs is fetched at CMake configure time and built with only the signature and KEM algorithms used by this project. Cryptographic keys are generated using liboqs randomness; the simulator seed only controls the network scenario and does not make key generation reproducible. Timings are measured around the actual cryptographic operations. liboqs is intended for research and prototyping, not production protection of sensitive data.
 
 ## Build
 
@@ -46,14 +46,10 @@ Command-line configuration:
 # ML-DSA example
 .\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm ML-DSA-44 --seed 42 --csv results_ml_dsa.csv --json results_ml_dsa.json
 
-# SHA-DSA example
-.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm SHA-DSA --seed 42 --csv results_sha_dsa.csv --json results_sha_dsa.json
-
 # FALCON example
 .\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm FALCON-512 --seed 42 --csv results_falcon.csv --json results_falcon.json
 
-# ML-KEM example
-.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm ML-KEM-512 --seed 42 --csv results_ml_kem.csv --json results_ml_kem.json
+# ML-KEM is a key-encapsulation mechanism, not a signature scheme. It is exposed through `KemScheme` and is not selected by the message-signing `--algorithm` option.
 ```
 
 Configuration file:
@@ -85,15 +81,15 @@ flowchart TD
     Output --> Python[Optional Python Analysis]
 ```
 
-The network layer depends on cryptographic interfaces, not on liboqs or any particular algorithm. This allows modeled profiles, classical baselines, liboqs-backed implementations, and hybrid schemes to be compared without rewriting the simulator.
+The network layer uses the `SignatureScheme` interface, backed by liboqs for the supported post-quantum signatures. ML-KEM is available through the separate `KemScheme` interface.
 
 ## Assumptions and limitations
 
-The channel is an abstract range, loss, latency, and bandwidth model. It is not a replacement for SUMO, Veins, ns-3, OMNeT++, IEEE 802.11p, or C-V2X. Results marked as modeled are not hardware benchmarks. Host CPU and memory behavior should be measured separately with the future benchmark target. Attack modules represent controlled simulation events and do not demonstrate real-world exploitability.
+The channel is an abstract range, loss, latency, and bandwidth model. It is not a replacement for SUMO, Veins, ns-3, OMNeT++, IEEE 802.11p, or C-V2X. Results are research measurements from liboqs on the current host and are not representative of vehicle hardware. liboqs names the hash-based profile SPHINCS+; it is not relabeled as the later SLH-DSA standard. Attack modules represent controlled simulation events and do not demonstrate real-world exploitability.
 
 ## Planned extensions
 
-1. Implement liboqs-backed ML-KEM and ML-DSA adapters.
+1. Add KEM session establishment and hybrid KDF composition to the simulator workflow.
 2. Add RSU and infrastructure nodes with V2I forwarding.
 3. Add KEM session establishment and hybrid KDF composition.
 4. Add pseudonym rotation, certificates, Sybil, impersonation, injection, and verification-flood attacks.

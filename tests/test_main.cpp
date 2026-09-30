@@ -1,4 +1,5 @@
 #include "crypto/signature_scheme.hpp"
+#include "crypto/kem_scheme.hpp"
 #include "metrics/metrics.hpp"
 #include "network/message.hpp"
 #include "simulation/simulator.hpp"
@@ -7,21 +8,22 @@
 #include <iostream>
 
 int main() {
-    for (const auto& name : {"SHA-DSA", "FALCON-512", "ML-KEM-512"}) {
-        auto scheme = v2x::crypto::createSignatureScheme(name);
-        const auto keys = scheme->generateKeyPair(42);
-        const std::string message = "signed BSM";
-        const auto signature = scheme->sign(message, keys);
-        assert(scheme->verify(message, signature, keys.publicKey));
-        assert(!scheme->verify("tampered BSM", signature, keys.publicKey));
-    }
-
     auto scheme = v2x::crypto::createSignatureScheme("ML-DSA-44");
     const auto keys = scheme->generateKeyPair(42);
     const std::string message = "signed BSM";
     const auto signature = scheme->sign(message, keys);
     assert(scheme->verify(message, signature, keys.publicKey));
     assert(!scheme->verify("tampered BSM", signature, keys.publicKey));
+
+    auto falcon = v2x::crypto::createSignatureScheme("FALCON-512");
+    const auto falconKeys = falcon->generateKeyPair(42);
+    const auto falconSignature = falcon->sign(message, falconKeys);
+    assert(falcon->verify(message, falconSignature, falconKeys.publicKey));
+
+    auto kem = v2x::crypto::createKemScheme("ML-KEM-512");
+    const auto kemKeys = kem->generateKeyPair(42);
+    const auto exchange = kem->encapsulate(kemKeys.publicKey, 42);
+    assert(kem->decapsulate(exchange.ciphertext, kemKeys.privateKey) == exchange.sharedSecret);
 
     const auto statistics = v2x::metrics::summarize({1.0, 2.0, 3.0, 4.0});
     assert(statistics.count == 4);

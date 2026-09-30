@@ -9,8 +9,8 @@
 namespace v2x::crypto {
 
 struct SignatureKeyPair {
-    std::uint64_t privateKey{};
-    std::uint64_t publicKey{};
+    std::vector<std::uint8_t> privateKey;
+    std::vector<std::uint8_t> publicKey;
 };
 
 struct Signature {
@@ -23,12 +23,6 @@ struct SignatureSizes {
     std::size_t signatureBytes{};
 };
 
-struct CryptoTiming {
-    double keyGenerationUs{};
-    double signingUs{};
-    double verificationUs{};
-};
-
 class SignatureScheme {
 public:
     virtual ~SignatureScheme() = default;
@@ -36,9 +30,8 @@ public:
     virtual SignatureKeyPair generateKeyPair(std::uint64_t seed) const = 0;
     virtual Signature sign(const std::string& message, const SignatureKeyPair& keyPair) const = 0;
     virtual bool verify(const std::string& message, const Signature& signature,
-                        std::uint64_t publicKey) const = 0;
+                        const std::vector<std::uint8_t>& publicKey) const = 0;
     virtual SignatureSizes sizes() const = 0;
-    virtual CryptoTiming timing() const = 0;
 };
 
 std::unique_ptr<SignatureScheme> createSignatureScheme(const std::string& name);

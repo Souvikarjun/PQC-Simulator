@@ -1,94 +1,109 @@
 #include "crypto/signature_scheme.hpp"
 
-#include <algorithm>
+#include <oqs/oqs.h>
+
+#include <array>
+#include <mutex>
 #include <stdexcept>
 
 namespace v2x::crypto {
 namespace {
 
-struct Profile {
-    const char* name;
-    SignatureSizes sizes;
-    CryptoTiming timing;
+struct SignatureAlgorithm {
+    const char* publicName;
+    const char* oqsName;
 };
 
-const Profile& profileFor(const std::string& name) {
-    static const Profile profiles[] = {
-        {"ML-DSA-44", {1312, 2560, 2420}, {18.0, 105.0, 155.0}},
-        {"ML-DSA-65", {1952, 4032, 3309}, {24.0, 145.0, 205.0}},
-        {"ML-DSA-87", {2592, 4896, 4627}, {30.0, 190.0, 260.0}},
-        {"SLH-DSA-SHA2-128s", {32, 64, 7856}, {35.0, 1850.0, 410.0}},
-        {"Ed25519", {32, 64, 64}, {8.0, 32.0, 48.0}},
-        {"ECDSA-P256", {65, 32, 72}, {40.0, 75.0, 110.0}},
-        {"SHA-DSA", {32, 64, 64}, {10.0, 40.0, 58.0}},
-        {"FALCON-512", {897, 1281, 666}, {14.0, 82.0, 96.0}},
-        {"FALCON-1024", {1793, 2305, 1280}, {20.0, 120.0, 145.0}},
-        {"ML-KEM", {800, 1632, 768}, {10.0, 50.0, 70.0}},
-        {"ML-KEM-512", {800, 1632, 768}, {10.0, 50.0, 70.0}},
-        {"ML-KEM-768", {1184, 2400, 1088}, {14.0, 68.0, 90.0}},
-        {"ML-KEM-1024", {1568, 3168, 1568}, {18.0, 86.0, 115.0}},
-    };
-    for (const auto& profile : profiles) {
-        if (profile.name == name) return profile;
+constexpr std::array algorithms{
+    SignatureAlgorithm{"ML-DSA-44", OQS_SIG_alg_ml_dsa_44},
+    SignatureAlgorithm{"ML-DSA-65", OQS_SIG_alg_ml_dsa_65},
+    SignatureAlgorithm{"ML-DSA-87", OQS_SIG_alg_ml_dsa_87},
+    SignatureAlgorithm{"FALCON-512", OQS_SIG_alg_falcon_512},
+    SignatureAlgorithm{"FALCON-1024", OQS_SIG_alg_falcon_1024},
+    SignatureAlgorithm{"SPHINCS+-SHA2-128s-simple", OQS_SIG_alg_sphincs_sha2_128s_simple},
+};
+
+void initializeOqs() {
+    static std::once_flag initialized;
+    std::call_once(initialized, [] { OQS_init(); });
+}
+
+const SignatureAlgorithm& algorithmFor(const std::string& name) {
+    for (const auto& algorithm : algorithms) {
+        if (algorithm.publicName == name) {
+            return algorithm;
+        }
     }
     throw std::invalid_argument("unsupported signature scheme: " + name);
 }
 
-std::uint64_t digest(const std::string& message, std::uint64_t key) {
-    std::uint64_t state = 1469598103934665603ULL ^ key;
-    for (unsigned char byte : message) {
-        state ^= byte;
-        state *= 1099511628211ULL;
-        state ^= state >> 29;
-    }
-    return state ^ (key * 0x9e3779b97f4a7c15ULL);
-}
-
-class ModeledSignatureScheme final : public SignatureScheme {
+class LiboqsSignatureScheme final : public SignatureScheme {
 public:
-    explicit ModeledSignatureScheme(std::string name) : name_(std::move(name)), profile_(profileFor(name_)) {}
+    explicit LiboqsSignatureScheme(std::string name)
+        : algorithm_(algorithmFor(name)), signature_(nullptr, OQS_SIG_free) {
+        initializeOqs();
+        signature_.reset(OQS_SIG_new(algorithm_.oqsName));
+        if (!signature_) {
+            throw std::runtime_error("liboqs signature algorithm is unavailable: " + name);
+        }
+    }
 
-    std::string name() const override { return name_; }
-    SignatureKeyPair generateKeyPair(std::uint64_t seed) const override { return {seed, seed}; }
+    std::string name() const override { return algorithm_.publicName; }
+
+    SignatureKeyPair generateKeyPair(std::uint64_t) const override {
+        SignatureKeyPair keyPair;
+        keyPair.publicKey.resize(signature_->length_public_key);
+        keyPair.privateKey.resize(signature_->length_secret_key);
+        if (OQS_SIG_keypair(signature_.get(), keyPair.publicKey.data(), keyPair.privateKey.data()) != OQS_SUCCESS) {
+            throw std::runtime_error("liboqs signature key generation failed");
+        }
+        return keyPair;
+    }
 
     Signature sign(const std::string& message, const SignatureKeyPair& keyPair) const override {
-        const auto value = digest(message, keyPair.privateKey);
         Signature signature;
-        signature.bytes.resize(profile_.sizes.signatureBytes);
-        for (std::size_t index = 0; index < signature.bytes.size(); ++index) {
-            signature.bytes[index] = static_cast<std::uint8_t>((value >> ((index % 8) * 8)) & 0xffU);
+        signature.bytes.resize(signature_->length_signature);
+        std::size_t signatureLength = 0;
+        if (keyPair.privateKey.size() != signature_->length_secret_key ||
+            OQS_SIG_sign(signature_.get(), signature.bytes.data(), &signatureLength,
+                         reinterpret_cast<const std::uint8_t*>(message.data()), message.size(),
+                         keyPair.privateKey.data()) != OQS_SUCCESS) {
+            throw std::runtime_error("liboqs signature generation failed");
         }
+        signature.bytes.resize(signatureLength);
         return signature;
     }
 
     bool verify(const std::string& message, const Signature& signature,
-                std::uint64_t publicKey) const override {
-        if (signature.bytes.size() != profile_.sizes.signatureBytes) return false;
-        const auto value = digest(message, publicKey);
-        for (std::size_t index = 0; index < 8 && index < signature.bytes.size(); ++index) {
-            if (signature.bytes[index] != static_cast<std::uint8_t>((value >> (index * 8)) & 0xffU)) return false;
-        }
-        return true;
+                const std::vector<std::uint8_t>& publicKey) const override {
+        if (publicKey.size() != signature_->length_public_key || signature.bytes.empty()) return false;
+        return OQS_SIG_verify(signature_.get(), reinterpret_cast<const std::uint8_t*>(message.data()),
+                              message.size(), signature.bytes.data(), signature.bytes.size(),
+                              publicKey.data()) == OQS_SUCCESS;
     }
 
-    SignatureSizes sizes() const override { return profile_.sizes; }
-    CryptoTiming timing() const override { return profile_.timing; }
+    SignatureSizes sizes() const override {
+        return {signature_->length_public_key, signature_->length_secret_key, signature_->length_signature};
+    }
 
 private:
-    std::string name_;
-    Profile profile_;
+    const SignatureAlgorithm& algorithm_;
+    std::unique_ptr<OQS_SIG, decltype(&OQS_SIG_free)> signature_;
 };
 
 }  // namespace
 
 std::unique_ptr<SignatureScheme> createSignatureScheme(const std::string& name) {
-    return std::make_unique<ModeledSignatureScheme>(name);
+    return std::make_unique<LiboqsSignatureScheme>(name);
 }
 
 std::vector<std::string> supportedSignatureSchemes() {
-    return {"ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "SLH-DSA-SHA2-128s",
-            "Ed25519", "ECDSA-P256", "SHA-DSA", "FALCON-512", "FALCON-1024",
-            "ML-KEM", "ML-KEM-512", "ML-KEM-768", "ML-KEM-1024"};
+    initializeOqs();
+    std::vector<std::string> supported;
+    for (const auto& algorithm : algorithms) {
+        if (OQS_SIG_alg_is_enabled(algorithm.oqsName)) supported.emplace_back(algorithm.publicName);
+    }
+    return supported;
 }
 
 }  // namespace v2x::crypto

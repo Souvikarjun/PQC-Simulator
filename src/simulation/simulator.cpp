@@ -22,15 +22,17 @@ RunResult Simulator::run() const {
     std::uniform_real_distribution<double> coordinate(0.0, 1000.0);
     std::uniform_real_distribution<double> heading(0.0, 360.0);
     std::uniform_real_distribution<double> probability(0.0, 1.0);
-    const auto timing = signer->timing();
     const auto sizes = signer->sizes();
     std::vector<network::Vehicle> vehicles;
     for (int id = 0; id < configuration_.vehicles; ++id) {
         const auto key = static_cast<std::uint64_t>(random()) + 1;
+        const auto keyGenerationStart = std::chrono::steady_clock::now();
+        auto keyPair = signer->generateKeyPair(key);
+        result.metrics.keyGenerationUs += std::chrono::duration<double, std::micro>(
+            std::chrono::steady_clock::now() - keyGenerationStart).count();
         vehicles.emplace_back(static_cast<NodeId>(id), Position{coordinate(random), coordinate(random)},
                               Velocity{configuration_.mobilityMetersPerSecond * 3.6, heading(random)},
-                              signer->generateKeyPair(key));
-        result.metrics.keyGenerationUs += timing.keyGenerationUs;
+                              std::move(keyPair));
     }
 
     const double tickSeconds = 1.0 / configuration_.messageRateHz;
@@ -45,9 +47,11 @@ RunResult Simulator::run() const {
                                      sender.position(), sender.velocity(), MessageType::Cam,
                                      "cooperative-awareness", {}};
             const auto serialized = message.serialize();
+            const auto signingStart = std::chrono::steady_clock::now();
             message.signature = signer->sign(serialized, sender.keys());
+            result.metrics.signingUs += std::chrono::duration<double, std::micro>(
+                std::chrono::steady_clock::now() - signingStart).count();
             ++result.metrics.generated;
-            result.metrics.signingUs += timing.signingUs;
             for (const auto& receiver : vehicles) {
                 if (receiver.id() == sender.id()) continue;
                 ++result.metrics.deliveryAttempts;
@@ -71,9 +75,12 @@ RunResult Simulator::run() const {
                 const auto replayKey = (static_cast<std::uint64_t>(receiver.id()) << 32U) | received.sender;
                 const auto previous = highestSequence.find(replayKey);
                 const bool replay = previous != highestSequence.end() && received.sequence <= previous->second;
+                const auto verificationStart = std::chrono::steady_clock::now();
                 const bool valid = signer->verify(received.serialize(), received.signature, sender.keys().publicKey);
+                const double verificationDurationUs = std::chrono::duration<double, std::micro>(
+                    std::chrono::steady_clock::now() - verificationStart).count();
+                result.metrics.verificationUs += verificationDurationUs;
                 ++result.metrics.verificationOperations;
-                result.metrics.verificationUs += timing.verificationUs;
                 if (replay) ++result.metrics.replayDetected;
                 if (!valid) {
                     if (configuration_.tamperAttack && message.id % 17 == 0) ++result.metrics.tamperDetected;
@@ -83,7 +90,7 @@ RunResult Simulator::run() const {
                     ++result.metrics.verified;
                     highestSequence[replayKey] = received.sequence;
                     result.metrics.authenticationLatencyUs.push_back(
-                        timing.verificationUs + configuration_.networkLatencyMs * 1000.0);
+                        verificationDurationUs + configuration_.networkLatencyMs * 1000.0);
                 }
             }
             ++result.metrics.deliveryAttempts;
@@ -94,14 +101,17 @@ RunResult Simulator::run() const {
                     ++result.metrics.delivered;
                     ++result.metrics.rsuDelivered;
                     result.metrics.bytesOnWire += message.unsignedBytes() + sizes.signatureBytes;
+                    const auto verificationStart = std::chrono::steady_clock::now();
                     const bool valid = signer->verify(message.serialize(), message.signature,
                                                       sender.keys().publicKey);
+                    const double verificationDurationUs = std::chrono::duration<double, std::micro>(
+                        std::chrono::steady_clock::now() - verificationStart).count();
+                    result.metrics.verificationUs += verificationDurationUs;
                     ++result.metrics.verificationOperations;
-                    result.metrics.verificationUs += timing.verificationUs;
                     if (valid) {
                         ++result.metrics.verified;
                         result.metrics.authenticationLatencyUs.push_back(
-                            timing.verificationUs + configuration_.networkLatencyMs * 1000.0);
+                            verificationDurationUs + configuration_.networkLatencyMs * 1000.0);
                     } else {
                         ++result.metrics.rejected;
                     }

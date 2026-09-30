@@ -37,4 +37,7 @@ public:
     virtual KemSizes sizes() const = 0;
 };
 
+std::unique_ptr<KemScheme> createKemScheme(const std::string& name);
+std::vector<std::string> supportedKemSchemes();
+
 }  // namespace v2x::crypto
