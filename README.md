@@ -9,6 +9,7 @@ A modular C++ simulator for studying post-quantum authentication overhead in V2V
 - Vehicle mobility, communication range, probabilistic loss, latency, and bandwidth metadata.
 - CAM message serialization and signature verification workflow.
 - Real liboqs-backed signature operations for enabled ML-DSA and Falcon variants, plus the SPHINCS+ SHA2 128s profile.
+- SPHINCS+ SHA2 128f is available as a faster-signing alternative to the smaller-signature 128s profile.
 - Real liboqs-backed ML-KEM-512/768/1024 key generation, encapsulation, and decapsulation through the KEM interface.
 - Replay and tampering attack hooks.
 - CSV and JSON result output.
@@ -48,6 +49,9 @@ Command-line configuration:
 
 # FALCON example
 .\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm FALCON-512 --seed 42 --csv results_falcon.csv --json results_falcon.json
+
+# SPHINCS+ speed-oriented profile (larger signatures than 128s)
+.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm SPHINCS+-SHA2-128f-simple --seed 42 --csv results_sphincs_128f.csv --json results_sphincs_128f.json
 
 # ML-KEM is a key-encapsulation mechanism, not a signature scheme. It is exposed through `KemScheme` and is not selected by the message-signing `--algorithm` option.
 ```

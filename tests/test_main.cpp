@@ -20,6 +20,18 @@ int main() {
     const auto falconSignature = falcon->sign(message, falconKeys);
     assert(falcon->verify(message, falconSignature, falconKeys.publicKey));
 
+    auto sphincsFast = v2x::crypto::createSignatureScheme("SPHINCS+-SHA2-128f-simple");
+    const auto sphincsFastKeys = sphincsFast->generateKeyPair(42);
+    const auto sphincsFastSignature = sphincsFast->sign(message, sphincsFastKeys);
+    assert(sphincsFast->verify(message, sphincsFastSignature, sphincsFastKeys.publicKey));
+    assert(!sphincsFast->verify("tampered BSM", sphincsFastSignature, sphincsFastKeys.publicKey));
+
+    auto sphincsSmall = v2x::crypto::createSignatureScheme("SPHINCS+-SHA2-128s-simple");
+    const auto sphincsSmallKeys = sphincsSmall->generateKeyPair(42);
+    const auto sphincsSmallSignature = sphincsSmall->sign(message, sphincsSmallKeys);
+    assert(sphincsSmall->verify(message, sphincsSmallSignature, sphincsSmallKeys.publicKey));
+    assert(!sphincsSmall->verify("tampered BSM", sphincsSmallSignature, sphincsSmallKeys.publicKey));
+
     auto kem = v2x::crypto::createKemScheme("ML-KEM-512");
     const auto kemKeys = kem->generateKeyPair(42);
     const auto exchange = kem->encapsulate(kemKeys.publicKey, 42);
@@ -41,6 +53,14 @@ int main() {
     assert(result.metrics.rsuDelivered == 6);
     assert(result.metrics.verified == 18);
     assert(result.metrics.rejected == 0);
+
+    config.algorithm = "SPHINCS+-SHA2-128f-simple";
+    config.vehicles = 1;
+    config.durationSeconds = 0.1;
+    const auto sphincsResult = v2x::simulation::Simulator(config).run();
+    assert(sphincsResult.metrics.generated == 1);
+    assert(sphincsResult.metrics.verified == 1);
+    assert(sphincsResult.metrics.rejected == 0);
 
     std::cout << "All simulator tests passed\n";
 }

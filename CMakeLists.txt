@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 set(OQS_BUILD_ONLY_LIB ON CACHE BOOL "" FORCE)
-set(OQS_MINIMAL_BUILD "SIG_ml_dsa_44;SIG_ml_dsa_65;SIG_ml_dsa_87;SIG_falcon_512;SIG_falcon_1024;SIG_sphincs_sha2_128s_simple;KEM_ml_kem_512;KEM_ml_kem_768;KEM_ml_kem_1024" CACHE STRING "" FORCE)
+set(OQS_MINIMAL_BUILD "SIG_ml_dsa_44;SIG_ml_dsa_65;SIG_ml_dsa_87;SIG_falcon_512;SIG_falcon_1024;SIG_sphincs_sha2_128f_simple;SIG_sphincs_sha2_128s_simple;KEM_ml_kem_512;KEM_ml_kem_768;KEM_ml_kem_1024" CACHE STRING "" FORCE)
 set(OQS_USE_OPENSSL OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     liboqs

@@ -18,7 +18,7 @@ void usage(const char* executable) {
               << "  --rate HZ           Message generation rate (default 10)\n"
               << "  --range M           Communication range in meters\n"
               << "  --loss P            Packet loss probability [0,1]\n"
-              << "  --algorithm NAME    Enabled liboqs signature scheme (for example ML-DSA-44 or FALCON-512)\n"
+              << "  --algorithm NAME    Enabled liboqs signature scheme (for example ML-DSA-44, FALCON-512, or SPHINCS+-SHA2-128f-simple)\n"
               << "  --seed N            Reproducibility seed\n"
               << "  --repetitions N     Number of independent runs\n"
               << "  --replay            Enable replay attack model\n"

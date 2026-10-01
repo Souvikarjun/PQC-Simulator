@@ -1,6 +1,6 @@
 {
   "experiment": "baseline",
-  "algorithm": "ML-DSA-44",
+  "algorithm": "SPHINCS+-SHA2-128f-simple",
   "vehicles": 50,
   "duration_seconds": 60.000000,
   "message_rate_hz": 10.000000,
@@ -16,21 +16,21 @@
   "tamper_detected": 0,
   "channel_loss": 6640,
   "out_of_range": 1172400,
-  "bytes_on_wire": 805104446,
+  "bytes_on_wire": 5512945726,
   "result": {
     "execution_type": "liboqs_pqc",
     "timeframe_seconds": 60.000000,
     "total_vehicles": 50,
-    "execution_time_us": 45010584.000000,
-    "key_generation_time_us": 7444.600000,
-    "encryption_time_us": 13598973.400000,
-    "decryption_time_us": 29285627.100000,
-    "signing_time_us": 13598973.400000,
-    "memory_usage_bytes": 314600,
+    "execution_time_us": 2364725296.000000,
+    "key_generation_time_us": 99487.800000,
+    "encryption_time_us": 1434689592.499996,
+    "decryption_time_us": 919545407.000013,
+    "signing_time_us": 1434689592.499996,
+    "memory_usage_bytes": 859200,
     "forge_attempts": 0,
     "forged_accepted": 0,
     "forgeability_ratio": 0.000000
   },
-  "signing_us": 13598973.400000,
-  "verification_us": 29285627.100000
+  "signing_us": 1434689592.499996,
+  "verification_us": 919545407.000013
 }

@@ -20,6 +20,7 @@ constexpr std::array algorithms{
     SignatureAlgorithm{"ML-DSA-87", OQS_SIG_alg_ml_dsa_87},
     SignatureAlgorithm{"FALCON-512", OQS_SIG_alg_falcon_512},
     SignatureAlgorithm{"FALCON-1024", OQS_SIG_alg_falcon_1024},
+    SignatureAlgorithm{"SPHINCS+-SHA2-128f-simple", OQS_SIG_alg_sphincs_sha2_128f_simple},
     SignatureAlgorithm{"SPHINCS+-SHA2-128s-simple", OQS_SIG_alg_sphincs_sha2_128s_simple},
 };
 
