@@ -25,6 +25,7 @@ void apply(Configuration& config, const std::string& key, const std::string& val
     else if (key == "network.bandwidth_mbps") config.bandwidthMbps = std::stod(value);
     else if (key == "network.mobility_mps") config.mobilityMetersPerSecond = std::stod(value);
     else if (key == "cryptography.algorithm") config.algorithm = value;
+    else if (key == "cryptography.kem_algorithm") config.kemAlgorithm = value;
     else if (key == "simulation.seed") config.seed = static_cast<std::uint32_t>(std::stoul(value));
     else if (key == "simulation.repetitions") config.repetitions = std::stoi(value);
     else if (key == "attack.replay") config.replayAttack = value == "true";

@@ -11,6 +11,7 @@ A modular C++ simulator for studying post-quantum authentication overhead in V2V
 - Real liboqs-backed signature operations for enabled ML-DSA and Falcon variants, plus the SPHINCS+ SHA2 128s profile.
 - SPHINCS+ SHA2 128f is available as a faster-signing alternative to the smaller-signature 128s profile.
 - Real liboqs-backed ML-KEM-512/768/1024 key generation, encapsulation, and decapsulation through the KEM interface.
+- Optional ML-KEM session establishment between vehicles and the RSU, with handshake timing and ciphertext overhead recorded alongside signed-message metrics.
 - Replay and tampering attack hooks.
 - CSV and JSON result output.
 - Result records include execution type, timeframe, vehicle count, execution/key-generation/signing/verification timings, estimated key/signature memory usage, and network counters.
@@ -53,8 +54,11 @@ Command-line configuration:
 # SPHINCS+ speed-oriented profile (larger signatures than 128s)
 .\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm SPHINCS+-SHA2-128f-simple --seed 42 --csv results_sphincs_128f.csv --json results_sphincs_128f.json
 
-# ML-KEM is a key-encapsulation mechanism, not a signature scheme. It is exposed through `KemScheme` and is not selected by the message-signing `--algorithm` option.
+# Add ML-KEM-512 session setup to signed-message simulation
+.\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm ML-DSA-44 --kem ML-KEM-512 --seed 42 --csv results_ml_kem.csv --json results_ml_kem.json
 ```
+
+ML-KEM is configured separately from the message-signing `--algorithm`: it establishes a shared session secret but does not replace message signatures. Each directed vehicle link and each vehicle-to-RSU link establishes one session on its first successful delivery. KEM ciphertext bytes count toward `bytes_on_wire`; public keys are assumed to be provisioned before the simulation.
 
 Configuration file:
 
@@ -85,7 +89,7 @@ flowchart TD
     Output --> Python[Optional Python Analysis]
 ```
 
-The network layer uses the `SignatureScheme` interface, backed by liboqs for the supported post-quantum signatures. ML-KEM is available through the separate `KemScheme` interface.
+The network layer uses the `SignatureScheme` interface, backed by liboqs for the supported post-quantum signatures. When configured, `KemScheme` establishes per-link ML-KEM sessions and records key generation, encapsulation, decapsulation, and ciphertext overhead.
 
 ## Assumptions and limitations
 
@@ -93,7 +97,7 @@ The channel is an abstract range, loss, latency, and bandwidth model. It is not 
 
 ## Planned extensions
 
-1. Add KEM session establishment and hybrid KDF composition to the simulator workflow.
+1. Add hybrid KDF composition to the KEM session workflow.
 2. Add RSU and infrastructure nodes with V2I forwarding.
 3. Add KEM session establishment and hybrid KDF composition.
 4. Add pseudonym rotation, certificates, Sybil, impersonation, injection, and verification-flood attacks.

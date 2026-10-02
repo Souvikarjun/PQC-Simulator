@@ -35,10 +35,15 @@ struct Metrics {
     std::uint64_t memoryUsageBytes{};
     std::uint64_t forgeAttempts{};
     std::uint64_t forgedAccepted{};
+    std::uint64_t kemSessionsEstablished{};
+    std::uint64_t kemSessionFailures{};
+    std::uint64_t kemBytesOnWire{};
     double executionTimeUs{};
     double keyGenerationUs{};
     double signingUs{};
     double verificationUs{};
+    double kemEncapsulationUs{};
+    double kemDecapsulationUs{};
     double networkLatencyUs{};
     std::vector<double> authenticationLatencyUs;
 };

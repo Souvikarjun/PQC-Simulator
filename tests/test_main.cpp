@@ -54,6 +54,15 @@ int main() {
     assert(result.metrics.verified == 18);
     assert(result.metrics.rejected == 0);
 
+    config.kemAlgorithm = "ML-KEM-512";
+    const auto kemSimulationResult = v2x::simulation::Simulator(config).run();
+    const auto kemSizes = v2x::crypto::createKemScheme("ML-KEM-512")->sizes();
+    assert(kemSimulationResult.metrics.kemSessionsEstablished == 9);
+    assert(kemSimulationResult.metrics.kemSessionFailures == 0);
+    assert(kemSimulationResult.metrics.kemBytesOnWire == 9 * kemSizes.ciphertextBytes);
+    assert(kemSimulationResult.metrics.verified == 18);
+
+    config.kemAlgorithm.clear();
     config.algorithm = "SPHINCS+-SHA2-128f-simple";
     config.vehicles = 1;
     config.durationSeconds = 0.1;

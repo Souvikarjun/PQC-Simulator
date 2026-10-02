@@ -1,4 +1,5 @@
 #include "crypto/signature_scheme.hpp"
+#include "crypto/kem_scheme.hpp"
 #include "output/writers.hpp"
 #include "simulation/configuration.hpp"
 #include "simulation/simulator.hpp"
@@ -19,6 +20,7 @@ void usage(const char* executable) {
               << "  --range M           Communication range in meters\n"
               << "  --loss P            Packet loss probability [0,1]\n"
               << "  --algorithm NAME    Enabled liboqs signature scheme (for example ML-DSA-44, FALCON-512, or SPHINCS+-SHA2-128f-simple)\n"
+              << "  --kem NAME          Optional KEM session scheme (for example ML-KEM-512)\n"
               << "  --seed N            Reproducibility seed\n"
               << "  --repetitions N     Number of independent runs\n"
               << "  --replay            Enable replay attack model\n"
@@ -49,6 +51,7 @@ bool parse(int argc, char** argv, v2x::simulation::Configuration& config) {
         else if (option == "--range") config.communicationRangeMeters = std::stod(argument);
         else if (option == "--loss") config.packetLoss = std::stod(argument);
         else if (option == "--algorithm") config.algorithm = argument;
+        else if (option == "--kem") config.kemAlgorithm = argument;
         else if (option == "--seed") config.seed = static_cast<std::uint32_t>(std::stoul(argument));
         else if (option == "--repetitions") config.repetitions = std::stoi(argument);
         else if (option == "--csv") config.csvPath = argument;
@@ -68,6 +71,12 @@ int main(int argc, char** argv) {
         const auto supported = v2x::crypto::supportedSignatureSchemes();
         if (std::find(supported.begin(), supported.end(), config.algorithm) == supported.end()) {
             throw std::invalid_argument("unsupported algorithm: " + config.algorithm);
+        }
+        if (!config.kemAlgorithm.empty()) {
+            const auto supportedKems = v2x::crypto::supportedKemSchemes();
+            if (std::find(supportedKems.begin(), supportedKems.end(), config.kemAlgorithm) == supportedKems.end()) {
+                throw std::invalid_argument("unsupported KEM algorithm: " + config.kemAlgorithm);
+            }
         }
         const auto result = v2x::simulation::Simulator(config).run();
         v2x::output::printSummary(result);

@@ -1,5 +1,6 @@
 #include "simulation/simulator.hpp"
 
+#include "crypto/kem_scheme.hpp"
 #include "crypto/signature_scheme.hpp"
 #include "network/message.hpp"
 #include "network/vehicle.hpp"
@@ -18,26 +19,49 @@ RunResult Simulator::run() const {
     const auto startTime = std::chrono::steady_clock::now();
     RunResult result{configuration_, {}, 0};
     const auto signer = crypto::createSignatureScheme(configuration_.algorithm);
+    const auto kem = configuration_.kemAlgorithm.empty()
+        ? nullptr : crypto::createKemScheme(configuration_.kemAlgorithm);
     std::mt19937 random(configuration_.seed);
     std::uniform_real_distribution<double> coordinate(0.0, 1000.0);
     std::uniform_real_distribution<double> heading(0.0, 360.0);
     std::uniform_real_distribution<double> probability(0.0, 1.0);
     const auto sizes = signer->sizes();
+    std::vector<crypto::KemKeyPair> kemKeys;
     std::vector<network::Vehicle> vehicles;
+    kemKeys.reserve(configuration_.vehicles);
     for (int id = 0; id < configuration_.vehicles; ++id) {
         const auto key = static_cast<std::uint64_t>(random()) + 1;
         const auto keyGenerationStart = std::chrono::steady_clock::now();
         auto keyPair = signer->generateKeyPair(key);
         result.metrics.keyGenerationUs += std::chrono::duration<double, std::micro>(
             std::chrono::steady_clock::now() - keyGenerationStart).count();
+        if (kem) {
+            const auto kemKeyGenerationStart = std::chrono::steady_clock::now();
+            kemKeys.push_back(kem->generateKeyPair(key));
+            result.metrics.keyGenerationUs += std::chrono::duration<double, std::micro>(
+                std::chrono::steady_clock::now() - kemKeyGenerationStart).count();
+        }
         vehicles.emplace_back(static_cast<NodeId>(id), Position{coordinate(random), coordinate(random)},
                               Velocity{configuration_.mobilityMetersPerSecond * 3.6, heading(random)},
                               std::move(keyPair));
+    }
+    crypto::KemKeyPair rsuKemKeys;
+    if (kem) {
+        const auto kemKeyGenerationStart = std::chrono::steady_clock::now();
+        rsuKemKeys = kem->generateKeyPair(static_cast<std::uint64_t>(random()) + 1);
+        result.metrics.keyGenerationUs += std::chrono::duration<double, std::micro>(
+            std::chrono::steady_clock::now() - kemKeyGenerationStart).count();
     }
 
     const double tickSeconds = 1.0 / configuration_.messageRateHz;
     result.ticks = static_cast<std::uint64_t>(std::ceil(configuration_.durationSeconds / tickSeconds));
     std::vector<std::uint64_t> sequence(vehicles.size());
+    std::vector<std::vector<bool>> kemSessions;
+    std::vector<bool> rsuKemSessions;
+    if (kem) {
+        kemSessions.assign(vehicles.size(), std::vector<bool>(vehicles.size(), false));
+        rsuKemSessions.assign(vehicles.size(), false);
+    }
     std::unordered_map<std::uint64_t, std::uint64_t> highestSequence;
     MessageId messageId = 0;
     for (std::uint64_t tick = 0; tick < result.ticks; ++tick) {
@@ -64,6 +88,28 @@ RunResult Simulator::run() const {
                     continue;
                 }
                 ++result.metrics.delivered;
+                if (kem && !kemSessions[sender.id()][receiver.id()]) {
+                    const auto encapsulationStart = std::chrono::steady_clock::now();
+                    const auto exchange = kem->encapsulate(kemKeys[receiver.id()].publicKey,
+                                                            static_cast<std::uint64_t>(random()) + 1);
+                    result.metrics.kemEncapsulationUs += std::chrono::duration<double, std::micro>(
+                        std::chrono::steady_clock::now() - encapsulationStart).count();
+                    result.metrics.bytesOnWire += exchange.ciphertext.size();
+                    result.metrics.kemBytesOnWire += exchange.ciphertext.size();
+                    const auto decapsulationStart = std::chrono::steady_clock::now();
+                    const auto sharedSecret = kem->decapsulate(exchange.ciphertext,
+                                                               kemKeys[receiver.id()].privateKey);
+                    result.metrics.kemDecapsulationUs += std::chrono::duration<double, std::micro>(
+                        std::chrono::steady_clock::now() - decapsulationStart).count();
+                    if (sharedSecret == exchange.sharedSecret) {
+                        kemSessions[sender.id()][receiver.id()] = true;
+                        ++result.metrics.kemSessionsEstablished;
+                    } else {
+                        ++result.metrics.kemSessionFailures;
+                        ++result.metrics.rejected;
+                        continue;
+                    }
+                }
                 result.metrics.bytesOnWire += message.unsignedBytes() + sizes.signatureBytes;
                 network::Message received = message;
                 const bool forged = configuration_.tamperAttack && message.id % 17 == 0;
@@ -100,6 +146,27 @@ RunResult Simulator::run() const {
                 if (probability(random) >= configuration_.packetLoss) {
                     ++result.metrics.delivered;
                     ++result.metrics.rsuDelivered;
+                    if (kem && !rsuKemSessions[sender.id()]) {
+                        const auto encapsulationStart = std::chrono::steady_clock::now();
+                        const auto exchange = kem->encapsulate(rsuKemKeys.publicKey,
+                                                                static_cast<std::uint64_t>(random()) + 1);
+                        result.metrics.kemEncapsulationUs += std::chrono::duration<double, std::micro>(
+                            std::chrono::steady_clock::now() - encapsulationStart).count();
+                        result.metrics.bytesOnWire += exchange.ciphertext.size();
+                        result.metrics.kemBytesOnWire += exchange.ciphertext.size();
+                        const auto decapsulationStart = std::chrono::steady_clock::now();
+                        const auto sharedSecret = kem->decapsulate(exchange.ciphertext, rsuKemKeys.privateKey);
+                        result.metrics.kemDecapsulationUs += std::chrono::duration<double, std::micro>(
+                            std::chrono::steady_clock::now() - decapsulationStart).count();
+                        if (sharedSecret == exchange.sharedSecret) {
+                            rsuKemSessions[sender.id()] = true;
+                            ++result.metrics.kemSessionsEstablished;
+                        } else {
+                            ++result.metrics.kemSessionFailures;
+                            ++result.metrics.rejected;
+                            continue;
+                        }
+                    }
                     result.metrics.bytesOnWire += message.unsignedBytes() + sizes.signatureBytes;
                     const auto verificationStart = std::chrono::steady_clock::now();
                     const bool valid = signer->verify(message.serialize(), message.signature,
@@ -126,6 +193,10 @@ RunResult Simulator::run() const {
     }
     result.metrics.networkLatencyUs = result.metrics.delivered * configuration_.networkLatencyMs * 1000.0;
     result.metrics.memoryUsageBytes = vehicles.size() * (sizes.publicKeyBytes + sizes.privateKeyBytes + sizes.signatureBytes);
+    if (kem) {
+        const auto kemSizes = kem->sizes();
+        result.metrics.memoryUsageBytes += (kemKeys.size() + 1) * (kemSizes.publicKeyBytes + kemSizes.privateKeyBytes);
+    }
     result.metrics.executionTimeUs = static_cast<double>(
         std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - startTime).count());
     return result;

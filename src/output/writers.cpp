@@ -18,7 +18,9 @@ void writeCsv(const std::string& path, const simulation::RunResult& result) {
               "attempts,rsu_attempts,delivered,rsu_delivered,verified,rejected,replay_detected,tamper_detected,channel_loss,"
               "out_of_range,bytes_on_wire,execution_type,timeframe_seconds,total_vehicles,execution_time_us,"
               "key_generation_time_us,encryption_time_us,decryption_time_us,signing_time_us,memory_usage_bytes,"
-              "forge_attempts,forged_accepted,forgeability_ratio,delivery_ratio,auth_ratio\n";
+              "forge_attempts,forged_accepted,forgeability_ratio,delivery_ratio,auth_ratio,kem_algorithm,"
+              "kem_sessions_established,kem_session_failures,kem_encapsulation_time_us,"
+              "kem_decapsulation_time_us,kem_bytes_on_wire\n";
     const double deliveryRatio = m.deliveryAttempts == 0 ? 0.0 : static_cast<double>(m.delivered) / m.deliveryAttempts;
     const double authRatio = m.delivered == 0 ? 0.0 : static_cast<double>(m.verified) / m.delivered;
     const double forgeabilityRatio = m.forgeAttempts == 0 ? 0.0 :
@@ -31,7 +33,9 @@ void writeCsv(const std::string& path, const simulation::RunResult& result) {
            << m.bytesOnWire << ',' << v2x::toString(c.mode) << ',' << c.durationSeconds << ',' << c.vehicles << ','
            << m.executionTimeUs << ',' << m.keyGenerationUs << ',' << m.signingUs << ',' << m.verificationUs << ','
            << m.signingUs << ',' << m.memoryUsageBytes << ',' << m.forgeAttempts << ',' << m.forgedAccepted << ','
-           << forgeabilityRatio << ',' << deliveryRatio << ',' << authRatio << '\n';
+           << forgeabilityRatio << ',' << deliveryRatio << ',' << authRatio << ',' << c.kemAlgorithm << ','
+           << m.kemSessionsEstablished << ',' << m.kemSessionFailures << ',' << m.kemEncapsulationUs << ','
+           << m.kemDecapsulationUs << ',' << m.kemBytesOnWire << '\n';
 }
 
 void writeJson(const std::string& path, const simulation::RunResult& result) {
@@ -44,6 +48,7 @@ void writeJson(const std::string& path, const simulation::RunResult& result) {
     output << std::fixed << std::setprecision(6)
            << "{\n  \"experiment\": \"" << c.experimentName << "\",\n"
            << "  \"algorithm\": \"" << c.algorithm << "\",\n"
+           << "  \"kem_algorithm\": \"" << c.kemAlgorithm << "\",\n"
            << "  \"vehicles\": " << c.vehicles << ",\n"
            << "  \"duration_seconds\": " << c.durationSeconds << ",\n"
            << "  \"message_rate_hz\": " << c.messageRateHz << ",\n"
@@ -60,12 +65,17 @@ void writeJson(const std::string& path, const simulation::RunResult& result) {
            << "  \"channel_loss\": " << m.channelLoss << ",\n"
            << "  \"out_of_range\": " << m.outOfRange << ",\n"
            << "  \"bytes_on_wire\": " << m.bytesOnWire << ",\n"
+           << "  \"kem_sessions_established\": " << m.kemSessionsEstablished << ",\n"
+           << "  \"kem_session_failures\": " << m.kemSessionFailures << ",\n"
+           << "  \"kem_bytes_on_wire\": " << m.kemBytesOnWire << ",\n"
            << "  \"result\": {\n"
            << "    \"execution_type\": \"" << v2x::toString(c.mode) << "\",\n"
            << "    \"timeframe_seconds\": " << c.durationSeconds << ",\n"
            << "    \"total_vehicles\": " << c.vehicles << ",\n"
            << "    \"execution_time_us\": " << m.executionTimeUs << ",\n"
            << "    \"key_generation_time_us\": " << m.keyGenerationUs << ",\n"
+           << "    \"kem_encapsulation_time_us\": " << m.kemEncapsulationUs << ",\n"
+           << "    \"kem_decapsulation_time_us\": " << m.kemDecapsulationUs << ",\n"
            << "    \"encryption_time_us\": " << m.signingUs << ",\n"
            << "    \"decryption_time_us\": " << m.verificationUs << ",\n"
            << "    \"signing_time_us\": " << m.signingUs << ",\n"
@@ -86,6 +96,7 @@ void printSummary(const simulation::RunResult& result) {
               << "PQC V2X research simulator\n"
               << "Experiment:              " << c.experimentName << "\n"
               << "Algorithm:               " << c.algorithm << "\n"
+              << "KEM:                      " << (c.kemAlgorithm.empty() ? "disabled" : c.kemAlgorithm) << "\n"
               << "Vehicles / duration:     " << c.vehicles << " / " << c.durationSeconds << " s\n"
               << "Message rate:             " << c.messageRateHz << " Hz\n"
               << "Generated messages:      " << m.generated << "\n"
@@ -99,9 +110,14 @@ void printSummary(const simulation::RunResult& result) {
               << "Channel loss:             " << m.channelLoss << "\n"
               << "Out of range:             " << m.outOfRange << "\n"
               << "Bytes on wire:            " << m.bytesOnWire << "\n"
+              << "KEM sessions established: " << m.kemSessionsEstablished << "\n"
+              << "KEM session failures:     " << m.kemSessionFailures << "\n"
+              << "KEM bytes on wire:        " << m.kemBytesOnWire << "\n"
               << "Execution type:           " << v2x::toString(c.mode) << "\n"
               << "Execution time:           " << m.executionTimeUs / 1000.0 << " ms\n"
               << "Key generation time:      " << m.keyGenerationUs / 1000.0 << " ms\n"
+              << "KEM encapsulation time:   " << m.kemEncapsulationUs / 1000.0 << " ms\n"
+              << "KEM decapsulation time:   " << m.kemDecapsulationUs / 1000.0 << " ms\n"
               << "Signing time:             " << m.signingUs / 1000.0 << " ms\n"
               << "Verification time:         " << m.verificationUs / 1000.0 << " ms\n";
     if (!m.authenticationLatencyUs.empty()) {
