@@ -24,6 +24,7 @@ void apply(Configuration& config, const std::string& key, const std::string& val
     else if (key == "network.latency_ms") config.networkLatencyMs = std::stod(value);
     else if (key == "network.bandwidth_mbps") config.bandwidthMbps = std::stod(value);
     else if (key == "network.mobility_mps") config.mobilityMetersPerSecond = std::stod(value);
+    else if (key == "network.backend") config.networkBackend = value;
     else if (key == "cryptography.algorithm") config.algorithm = value;
     else if (key == "simulation.seed") config.seed = static_cast<std::uint32_t>(std::stoul(value));
     else if (key == "simulation.repetitions") config.repetitions = std::stoi(value);
@@ -57,7 +58,8 @@ Configuration loadConfigurationFile(const std::string& path) {
 void validate(const Configuration& config) {
     if (config.vehicles <= 0 || config.durationSeconds <= 0 || config.messageRateHz <= 0 ||
         config.communicationRangeMeters <= 0 || config.packetLoss < 0 || config.packetLoss > 1 ||
-        config.bandwidthMbps <= 0 || config.repetitions <= 0) {
+        config.bandwidthMbps <= 0 || config.repetitions <= 0 ||
+        (config.networkBackend != "abstract" && config.networkBackend != "ns3_wave")) {
         throw std::invalid_argument("invalid simulation configuration");
     }
 }

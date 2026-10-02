@@ -7,6 +7,7 @@ A modular C++ simulator for studying post-quantum authentication overhead in V2V
 - C++20 project structure with a reusable `v2x_core` library.
 - Deterministic experiment seeds and simple YAML-style configuration files.
 - Vehicle mobility, communication range, probabilistic loss, latency, and bandwidth metadata.
+- Optional ns-3 IEEE 802.11p/WAVE radio backend for broadcast delivery, contention, range, and packet-delay simulation.
 - CAM message serialization and signature verification workflow.
 - Real liboqs-backed signature operations for enabled ML-DSA and Falcon variants, plus the SPHINCS+ SHA2 128s profile.
 - Real liboqs-backed ML-KEM-512/768/1024 key generation, encapsulation, and decapsulation through the KEM interface.
@@ -18,6 +19,12 @@ A modular C++ simulator for studying post-quantum authentication overhead in V2V
 
 liboqs is fetched at CMake configure time and built with only the signature and KEM algorithms used by this project. Cryptographic keys are generated using liboqs randomness; the simulator seed only controls the network scenario and does not make key generation reproducible. Timings are measured around the actual cryptographic operations. liboqs is intended for research and prototyping, not production protection of sensitive data.
 
+### Optional ns-3 WAVE backend
+
+Install an ns-3 build that exports its CMake package and includes the `core`, `network`, `internet`, `mobility`, `wifi`, and `wave` modules. Then configure this project with `-DV2X_ENABLE_NS3=ON` (add `-DCMAKE_PREFIX_PATH=<ns-3-install-prefix>` if CMake cannot find `ns3Config.cmake`). Select `ns3_wave` with `--backend ns3_wave` or `network.backend: ns3_wave` in the configuration file. The default `abstract` backend does not require ns-3.
+
+The WAVE backend uses ns-3's 802.11p PHY/MAC helpers, broadcast UDP packets, a range propagation limit, and the simulator's per-tick vehicle positions. It uses a fixed RSU at `(500, 500)`, and applies the configured `network.packet_loss` in addition to radio contention/PHY losses. Mobility remains the simulator's straight-line model; SUMO traces, multi-channel service advertisements, and detailed urban propagation are not currently modeled.
+
 ## Build
 
 A C++20 compiler is required by the project configuration. From a Visual Studio Developer PowerShell:
@@ -27,6 +34,8 @@ cmake -S . -B build
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
+
+For an ns-3-enabled build, use `cmake -S . -B build -DV2X_ENABLE_NS3=ON` and then the same build and test commands.
 
 The executable files are generated in the build output directory, not at the repository root. With the current MSVC/CMake setup, the binaries are created under `build\Release` (or `build\Debug` if you build without `--config Release`).
 
@@ -45,6 +54,9 @@ Command-line configuration:
 ```powershell
 # ML-DSA example
 .\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm ML-DSA-44 --seed 42 --csv results_ml_dsa.csv --json results_ml_dsa.json
+
+# ns-3 IEEE 802.11p/WAVE transport (requires an ns-3-enabled build)
+.\build\Release\pqc_v2x_simulator.exe --backend ns3_wave --vehicles 50 --duration 60 --range 300
 
 # FALCON example
 .\build\Release\pqc_v2x_simulator.exe --vehicles 50 --duration 60 --range 300 --loss 0.02 --algorithm FALCON-512 --seed 42 --csv results_falcon.csv --json results_falcon.json

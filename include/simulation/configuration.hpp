@@ -17,6 +17,7 @@ struct Configuration {
     double networkLatencyMs{2.0};
     double bandwidthMbps{6.0};
     double mobilityMetersPerSecond{0.0};
+    std::string networkBackend{"abstract"};
     std::uint32_t seed{42};
     int repetitions{1};
     std::string algorithm{"ML-DSA-44"};

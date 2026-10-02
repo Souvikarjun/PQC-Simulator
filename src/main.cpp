@@ -18,6 +18,7 @@ void usage(const char* executable) {
               << "  --rate HZ           Message generation rate (default 10)\n"
               << "  --range M           Communication range in meters\n"
               << "  --loss P            Packet loss probability [0,1]\n"
+              << "  --backend NAME      Network backend: abstract or ns3_wave\n"
               << "  --algorithm NAME    Enabled liboqs signature scheme (for example ML-DSA-44 or FALCON-512)\n"
               << "  --seed N            Reproducibility seed\n"
               << "  --repetitions N     Number of independent runs\n"
@@ -48,6 +49,7 @@ bool parse(int argc, char** argv, v2x::simulation::Configuration& config) {
         else if (option == "--rate") config.messageRateHz = std::stod(argument);
         else if (option == "--range") config.communicationRangeMeters = std::stod(argument);
         else if (option == "--loss") config.packetLoss = std::stod(argument);
+        else if (option == "--backend") config.networkBackend = argument;
         else if (option == "--algorithm") config.algorithm = argument;
         else if (option == "--seed") config.seed = static_cast<std::uint32_t>(std::stoul(argument));
         else if (option == "--repetitions") config.repetitions = std::stoi(argument);
